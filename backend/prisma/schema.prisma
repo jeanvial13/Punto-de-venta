@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+// Users & Auth
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @relation(fields: [roleId], references: [id])
+  roleId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales         Sale[]
+  inventoryLogs InventoryLog[]
+  cashRegisters CashRegister[]
+  technician    Technician?
+  repairStatusLogs RepairStatusLog[]
+  repairNotes   RepairNote[]
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // ADMIN, CASHIER, SUPERVISOR, INVENTORY
+  permissions String[] // List of permission strings
+  users       User[]
+}
+
+// Products & Inventory
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  products    Product[]
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  barcode     String?  @unique
+  sku         String?  @unique
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  cost        Decimal  @db.Decimal(10, 2)
+  tax         Decimal  @default(0) @db.Decimal(5, 2)
+  stock       Int      @default(0)
+  minStock    Int      @default(5)
+  image       String?
+  status      Boolean  @default(true)
+  
+  category    Category? @relation(fields: [categoryId], references: [id])
+  categoryId  Int?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  saleItems     SaleItem[]
+  inventoryLogs InventoryLog[]
+  purchaseItems PurchaseItem[]
+  repairItems   RepairItem[]
+}
+
+model InventoryLog {
+  id        Int      @id @default(autoincrement())
+  product   Product  @relation(fields: [productId], references: [id])
+  productId Int
+  type      String   // IN, OUT, ADJUSTMENT
+  quantity  Int
+  reason    String?
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime @default(now())
+}
+
+// Clients & Suppliers
+model Client {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  taxId     String?
+  notes     String?
+  sales     Sale[]
+  devices   Device[]
+  repairs   Repair[]
+  createdAt DateTime @default(now())
+}
+
+model Supplier {
+  id        Int        @id @default(autoincrement())
+  name      String
+  contact   String?
+  email     String?
+  phone     String?
+  address   String?
+  purchases Purchase[]
+  createdAt DateTime   @default(now())
+}
+
+// Sales
+model Sale {
+  id            Int        @id @default(autoincrement())
+  ticketNumber  String     @unique
+  total         Decimal    @db.Decimal(10, 2)
+  tax           Decimal    @db.Decimal(10, 2)
+  discount      Decimal    @default(0) @db.Decimal(10, 2)
+  paymentMethod String     // CASH, CARD, TRANSFER, MIXED
+  status        String     // COMPLETED, SUSPENDED, CANCELED
+  
+  client        Client?    @relation(fields: [clientId], references: [id])
+  clientId      Int?
+  
+  user          User       @relation(fields: [userId], references: [id])
+  userId        Int
+
+  createdAt     DateTime   @default(now())
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id        Int     @id @default(autoincrement())
+  sale      Sale    @relation(fields: [saleId], references: [id])
+  saleId    Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+}
+
+// Purchases
+model Purchase {
+  id         Int            @id @default(autoincrement())
+  supplier   Supplier       @relation(fields: [supplierId], references: [id])
+  supplierId Int
+  total      Decimal        @db.Decimal(10, 2)
+  status     String         // PENDING, COMPLETED
+  createdAt  DateTime       @default(now())
+  items      PurchaseItem[]
+}
+
+model PurchaseItem {
+  id         Int      @id @default(autoincrement())
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
+  purchaseId Int
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  Int
+  quantity   Int
+  cost       Decimal  @db.Decimal(10, 2)
+  total      Decimal  @db.Decimal(10, 2)
+}
+
+// Cash Register
+model CashRegister {
+  id          Int            @id @default(autoincrement())
+  user        User           @relation(fields: [userId], references: [id])
+  userId      Int
+  startTime   DateTime       @default(now())
+  endTime     DateTime?
+  startAmount Decimal        @db.Decimal(10, 2)
+  endAmount   Decimal?       @db.Decimal(10, 2)
+  status      String         // OPEN, CLOSED
+  movements   CashMovement[]
+}
+
+model CashMovement {
+  id             Int          @id @default(autoincrement())
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  cashRegisterId Int
+  type           String       // IN, OUT
+  amount         Decimal      @db.Decimal(10, 2)
+  reason         String?
+  createdAt      DateTime     @default(now())
+}
+
+// Settings
+model Setting {
+  key   String @id
+  value String
+}
+
+// Repair System Models
+
+// Technicians
+model Technician {
+  id              Int      @id @default(autoincrement())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          Int      @unique
+  specializations String[] // Array of specialization areas
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  
+  repairs Repair[]
+}
+
+// Devices
+model Device {
+  id          Int      @id @default(autoincrement())
+  client      Client   @relation(fields: [clientId], references: [id])
+  clientId    Int
+  brand       String   // Samsung, iPhone, etc.
+  model       String
+  color       String?
+  imei        String   @unique
+  condition   String   // Condition when received
+  batteryLevel Int?
+  accessories String?  // JSON string or comma-separated
+  createdAt   DateTime @default(now())
+  
+  photos  DevicePhoto[]
+  repairs Repair[]
+}
+
+// Device Photos
+model DevicePhoto {
+  id        Int      @id @default(autoincrement())
+  device    Device   @relation(fields: [deviceId], references: [id])
+  deviceId  Int
+  photoUrl  String
+  photoType String   // FRONT, BACK, DAMAGE, etc.
+  createdAt DateTime @default(now())
+}
+
+// Repairs
+model Repair {
+  id                 Int       @id @default(autoincrement())
+  ticketNumber       String    @unique
+  client             Client    @relation(fields: [clientId], references: [id])
+  clientId           Int
+  device             Device    @relation(fields: [deviceId], references: [id])
+  deviceId           Int
+  technician         Technician? @relation(fields: [technicianId], references: [id])
+  technicianId       Int?
+  
+  reportedIssue      String
+  diagnosticInitial  String?
+  diagnosticFinal    String?
+  
+  estimatedCost      Decimal   @db.Decimal(10, 2)
+  finalCost          Decimal?  @db.Decimal(10, 2)
+  estimatedDelivery  DateTime?
+  warranty           String?
+  
+  status             String    // RECEIVED, DIAGNOSING, AWAITING_PARTS, etc.
+  
+  deliveredAt        DateTime?
+  signaturePhoto     String?   // Photo of delivery signature
+  
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  
+  items              RepairItem[]
+  softwareActions    RepairSoftwareAction[]
+  statusLogs         RepairStatusLog[]
+  notes              RepairNote[]
+}
+
+// Parts used in repairs
+model RepairItem {
+  id        Int     @id @default(autoincrement())
+  repair    Repair  @relation(fields: [repairId], references: [id])
+  repairId  Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  quantity  Int
+  cost      Decimal @db.Decimal(10, 2)
+  warranty  String? // Warranty on this part
+}
+
+// Software services performed
+model RepairSoftwareAction {
+  id                 Int      @id @default(autoincrement())
+  repair             Repair   @relation(fields: [repairId], references: [id])
+  repairId           Int
+  serviceType        String   // SOFTWARE_RESET, FLASH, UNLOCK, FRP_REMOVAL, etc.
+  cost               Decimal  @db.Decimal(10, 2)
+  notes              String?
+  legalAuthorization Boolean  @default(false) // For iCloud, FRP removal
+  createdAt          DateTime @default(now())
+}
+
+// Status change history
+model RepairStatusLog {
+  id        Int      @id @default(autoincrement())
+  repair    Repair   @relation(fields: [repairId], references: [id])
+  repairId  Int
+  status    String
+  changedBy User     @relation(fields: [userId], references: [id])
+  userId    Int
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+// Notes (internal/customer)
+model RepairNote {
+  id        Int      @id @default(autoincrement())
+  repair    Repair   @relation(fields: [repairId], references: [id])
+  repairId  Int
+  content   String
+  isInternal Boolean @default(false) // true = staff only, false = customer can see
+  createdBy User     @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime @default(now())
+}
+

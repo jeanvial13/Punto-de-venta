@@ -1,0 +1,72 @@
+# VICMAN - Sistema POS y Reparaciones
+# Solo subir código fuente - Docker instala las dependencias
+
+# === DEPENDENCIAS (LO MÁS PESADO) ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# === BUILD OUTPUTS ===
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# === ENVIRONMENT & SECRETS ===
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# === DATABASE ===
+*.db
+*.sqlite
+*.sqlite3
+
+# === PRISMA ===
+backend/prisma/migrations/*_*
+!backend/prisma/migrations/init.sql
+backend/node_modules/.prisma/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# === LOGS ===
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === UPLOADS & TEMP ===
+uploads/
+temp/
+tmp/
+
+# === DOCKER (local) ===
+.dockerignore
+
+# === COVERAGE & TESTS ===
+coverage/
+.nyc_output/
+.cache/
+
+# === MISC ===
+*.pid
+*.seed
+*.pid.lock
+.npm
+.eslintcache
